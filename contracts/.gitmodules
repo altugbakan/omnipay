@@ -1,9 +1,9 @@
 [submodule "lib/forge-std"]
-	path = lib/forge-std
+	path = contracts/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
 [submodule "lib/LayerZero"]
-	path = lib/LayerZero
+	path = contracts/lib/LayerZero
 	url = https://github.com/LayerZero-Labs/LayerZero
 [submodule "lib/openzeppelin-contracts"]
-	path = lib/openzeppelin-contracts
+	path = contracts/lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts

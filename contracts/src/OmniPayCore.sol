@@ -15,7 +15,7 @@ contract OmniPayCore is Ownable, ILayerZeroReceiver {
 
     IExternalRouter public externalRouter;
     ILayerZeroEndpoint public layerZeroEndpoint;
-    IERC20 public immutable usdc;
+    IERC20 public usdc;
 
     constructor(address _usdc, address _layerZeroEndpoint, address _externalRouter) {
         usdc = IERC20(_usdc);
@@ -95,5 +95,9 @@ contract OmniPayCore is Ownable, ILayerZeroReceiver {
 
     function setExternalRouter(address _externalRouter) external onlyOwner {
         externalRouter = IExternalRouter(_externalRouter);
+    }
+
+    function setUsdc(address _usdc) external onlyOwner {
+        usdc = IERC20(_usdc);
     }
 }

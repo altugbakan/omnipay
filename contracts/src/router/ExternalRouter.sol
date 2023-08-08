@@ -5,6 +5,15 @@ import {Ownable} from "openzeppelin/access/Ownable.sol";
 import {IExternalRouter} from "../interfaces/IExternalRouter.sol";
 
 contract ExternalRouter is IExternalRouter, Ownable {
+    event MessageSent(
+        uint16 dstChainId,
+        bytes destination,
+        bytes payload,
+        address refundAddress,
+        address zroPaymentAddress,
+        bytes adapterParams
+    );
+
     bytes[] public messageQueue;
     address omniPayCore;
 
@@ -25,6 +34,8 @@ contract ExternalRouter is IExternalRouter, Ownable {
         messageQueue.push(
             abi.encode(_dstChainId, _destination, _payload, _refundAddress, _zroPaymentAddress, _adapterParams)
         );
+
+        emit MessageSent(_dstChainId, _destination, _payload, _refundAddress, _zroPaymentAddress, _adapterParams);
     }
 
     function route(uint16 _srcChainId, bytes calldata _srcAddress, uint64 _nonce, bytes calldata _payload)
@@ -41,5 +52,9 @@ contract ExternalRouter is IExternalRouter, Ownable {
         require(messageQueue.length > 0, "ExternalRouter: No messages in queue");
 
         messageQueue.pop();
+    }
+
+    function setOmniPayCore(address _omniPayCore) external onlyOwner {
+        omniPayCore = _omniPayCore;
     }
 }
