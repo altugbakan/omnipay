@@ -6,7 +6,7 @@ import {Ownable} from "openzeppelin/access/Ownable.sol";
 import {ILayerZeroEndpoint} from "LayerZero/interfaces/ILayerZeroEndpoint.sol";
 import {ILayerZeroReceiver} from "LayerZero/interfaces/ILayerZeroReceiver.sol";
 
-contract OmniPayCore is Ownable, ILayerZeroReceiver {
+contract OmniPayClient is Ownable, ILayerZeroReceiver {
     mapping(uint16 => bytes) public trustedRemoteLookup;
     mapping(bytes32 => bool) public processed;
 
