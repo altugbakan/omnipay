@@ -2,50 +2,39 @@
 pragma solidity ^0.8.13;
 
 import {Ownable} from "openzeppelin/access/Ownable.sol";
+import {ILayerZeroReceiver} from "LayerZero/interfaces/ILayerZeroReceiver.sol";
 import {IExternalRouter} from "../interfaces/IExternalRouter.sol";
 
 contract ExternalRouter is IExternalRouter, Ownable {
-    event MessageSent(
-        uint16 dstChainId,
-        bytes destination,
-        bytes payload,
-        address refundAddress,
-        address zroPaymentAddress,
-        bytes adapterParams
-    );
+    event MessageSent(uint16 dstChainId, bytes destination, bytes payload);
 
     bytes[] public messageQueue;
-    address omniPayCore;
+    uint16 public currentChainId;
+    mapping(bytes => uint64) public lastNonces;
+    ILayerZeroReceiver public omniPay;
 
-    constructor(address _omniPayCore) {
-        omniPayCore = _omniPayCore;
+    constructor(address _omniPay, uint16 _currentChainId) {
+        omniPay = ILayerZeroReceiver(_omniPay);
+        currentChainId = _currentChainId;
     }
 
     function send(
         uint16 _dstChainId,
         bytes calldata _destination,
         bytes calldata _payload,
-        address payable _refundAddress,
-        address _zroPaymentAddress,
-        bytes calldata _adapterParams
+        address payable,
+        address,
+        bytes calldata
     ) external override {
-        require(msg.sender == omniPayCore, "ExternalRouter: Only OmniPayCore can call this function");
+        require(msg.sender == address(omniPay), "ExternalRouter: Only OmniPay can call this function");
 
-        messageQueue.push(
-            abi.encode(_dstChainId, _destination, _payload, _refundAddress, _zroPaymentAddress, _adapterParams)
-        );
+        messageQueue.push(abi.encode(_dstChainId, _destination, _payload));
 
-        emit MessageSent(_dstChainId, _destination, _payload, _refundAddress, _zroPaymentAddress, _adapterParams);
+        emit MessageSent(_dstChainId, _destination, _payload);
     }
 
-    function route(uint16 _srcChainId, bytes calldata _srcAddress, uint64 _nonce, bytes calldata _payload)
-        external
-        onlyOwner
-    {
-        (bool success,) = omniPayCore.call(
-            abi.encodeWithSignature("lzReceive(uint16,bytes,uint64,bytes)", _srcChainId, _srcAddress, _nonce, _payload)
-        );
-        require(success, "ExternalRouter: Call to lzReceive failed");
+    function route(uint16 _srcChainId, bytes calldata _srcAddress, bytes calldata _payload) external onlyOwner {
+        omniPay.lzReceive(_srcChainId, _srcAddress, ++lastNonces[_srcAddress], _payload);
     }
 
     function pop() external onlyOwner {
@@ -54,7 +43,7 @@ contract ExternalRouter is IExternalRouter, Ownable {
         messageQueue.pop();
     }
 
-    function setOmniPayCore(address _omniPayCore) external onlyOwner {
-        omniPayCore = _omniPayCore;
+    function setOmniPay(address _omniPay) external onlyOwner {
+        omniPay = ILayerZeroReceiver(_omniPay);
     }
 }

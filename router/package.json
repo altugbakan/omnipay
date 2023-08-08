@@ -1,0 +1,24 @@
+{
+  "name": "router",
+  "version": "1.0.0",
+  "description": "Router bot for cross-chain communication",
+  "type": "module",
+  "main": "router.js",
+  "scripts": {
+    "prestart": "cd ../contracts && forge build && mkdir -p ../router/abi && cp ./out/ExternalRouter.sol/ExternalRouter.json ../router/abi/",
+    "start": "npm run tsc && node --no-warnings dist/router.js",
+    "tsc": "./node_modules/typescript/bin/tsc"
+  },
+  "keywords": [
+    "ethereum"
+  ],
+  "author": "altug",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "viem": "^1.5.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.1.6"
+  }
+}

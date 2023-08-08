@@ -25,14 +25,14 @@ contract OmniPayClient is Ownable, ILayerZeroReceiver {
     function deposit(uint256 amount) external {
         usdc.transferFrom(msg.sender, address(this), amount);
 
-        send(amount, true);
+        _send(amount, true);
     }
 
     function withdraw(uint256 amount) external {
-        send(amount, false);
+        _send(amount, false);
     }
 
-    function send(uint256 amount, bool isDeposit) internal {
+    function _send(uint256 amount, bool isDeposit) internal {
         bytes memory payload = abi.encode(msg.sender, amount, isDeposit);
         bytes memory remoteAndLocalAddresses = abi.encodePacked(coreAddress, address(this));
 
