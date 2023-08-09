@@ -33,6 +33,14 @@ contract ExternalRouter is IExternalRouter, Ownable {
         emit MessageSent(_dstChainId, _destination, _payload);
     }
 
+    function estimateFees(uint16, address, bytes calldata, bool, bytes calldata)
+        external
+        pure
+        returns (uint256, uint256)
+    {
+        return (0, 0);
+    }
+
     function route(uint16 _srcChainId, bytes calldata _srcAddress, bytes calldata _payload) external onlyOwner {
         omniPay.lzReceive(_srcChainId, _srcAddress, ++lastNonces[_srcAddress], _payload);
     }
@@ -46,4 +54,11 @@ contract ExternalRouter is IExternalRouter, Ownable {
     function setOmniPay(address _omniPay) external onlyOwner {
         omniPay = ILayerZeroReceiver(_omniPay);
     }
+
+    function withdraw() external onlyOwner {
+        (bool success,) = payable(msg.sender).call{value: address(this).balance}("");
+        require(success, "ExternalRouter: Withdraw failed");
+    }
+
+    receive() external payable {}
 }

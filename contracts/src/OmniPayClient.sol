@@ -85,4 +85,11 @@ contract OmniPayClient is Ownable, ILayerZeroReceiver {
     function setUsdc(address _usdc) external onlyOwner {
         usdc = IERC20(_usdc);
     }
+
+    function withdraw() external onlyOwner {
+        (bool success,) = payable(msg.sender).call{value: address(this).balance}("");
+        require(success, "OmniPayClient: Withdraw failed");
+    }
+
+    receive() external payable {}
 }

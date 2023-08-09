@@ -6,4 +6,4 @@ libs = ["lib"]
 [rpc_endpoints]
 optimism = "https://optimism-goerli.publicnode.com"
 zora = "https://testnet.rpc.zora.co"
-base = "https://1rpc.io/base-goerli"
+base = "https://goerli.base.org"
