@@ -86,7 +86,7 @@ contract OmniPayScript is Script {
         );
 
         // fund OmniPayCore
-        payable(address(omniPayCore)).transfer(1_000_000);
+        payable(address(omniPayCore)).transfer(0.1 ether);
 
         // set trusted remote lookups on Base
         _changeToBaseFork();
@@ -95,7 +95,7 @@ contract OmniPayScript is Script {
         );
 
         // fund OmniPayClient
-        payable(address(baseOmniPayClient)).transfer(1_000_000);
+        payable(address(baseOmniPayClient)).transfer(0.1 ether);
 
         // set trusted remote lookups on Zora
         _changeToZoraFork();
@@ -104,7 +104,7 @@ contract OmniPayScript is Script {
         );
 
         // fund OmniPayClient
-        payable(address(zoraOmniPayClient)).transfer(1_000_000);
+        payable(address(zoraOmniPayClient)).transfer(0.1 ether);
 
         vm.stopBroadcast();
     }
