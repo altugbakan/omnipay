@@ -8,3 +8,4 @@ fs_permissions = [{ access = "read-write", path = "./out"}]
 optimism = "https://optimism-goerli.publicnode.com"
 zora = "https://testnet.rpc.zora.co"
 base = "https://goerli.base.org"
+mode = "https://sepolia.mode.network/"

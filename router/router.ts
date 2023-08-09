@@ -1,134 +1,199 @@
-import {
-  createWalletClient,
-  decodeAbiParameters,
-  encodeAbiParameters,
-  getContract,
-  http,
-  parseAbiParameters,
-} from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { zoraTestnet, optimismGoerli } from "viem/chains";
+import { ethers, getNumber } from "ethers";
 import externalRouter from "./abi/ExternalRouter.json" assert { type: "json" };
+import contracts from "./abi/contracts.json" assert { type: "json" };
+import { JsonRpcProvider } from "ethers";
 import dotenv from "dotenv";
 dotenv.config();
 
+function rotateHexString(hexString: string): string {
+  hexString = hexString.replace("0x", "");
+  hexString =
+    hexString.slice(hexString.length / 2) +
+    hexString.slice(0, hexString.length / 2);
+
+  return `0x${hexString}`;
+}
+
+function processMessage(
+  message: any[],
+  fromChain: "optimism" | "zora" | "mode"
+): any[] {
+  message = [...message];
+
+  switch (fromChain) {
+    case "optimism":
+      message[0] = 10132n;
+      break;
+    case "zora":
+      message[0] = 9999n;
+      break;
+    case "mode":
+      message[0] = 9998n;
+      break;
+  }
+
+  message[1] = rotateHexString(message[1]);
+
+  return message;
+}
+
+// Set up providers
+const optimismProviderURl = "https://optimism-goerli.publicnode.com";
+const zoraProviderUrl = "https://testnet.rpc.zora.co";
+const modeProviderUrl = "https://sepolia.mode.network/";
+
 // Initialize clients
-const account = privateKeyToAccount(
-  process.env.BOT_PRIVATE_KEY as `0x${string}`
+const optimismProvider = new JsonRpcProvider(optimismProviderURl);
+const optimismWallet = new ethers.Wallet(
+  process.env.BOT_PRIVATE_KEY,
+  optimismProvider
 );
 
-const optimismRouterAddress = process.env
-  .OPTIMISM_ROUTER_ADDRESS as `0x${string}`;
-const zoraRouterAddress = process.env.ZORA_ROUTER_ADDRESS as `0x${string}`;
+const zoraProvider = new JsonRpcProvider(zoraProviderUrl);
+const zoraWallet = new ethers.Wallet(process.env.BOT_PRIVATE_KEY, zoraProvider);
 
-const zoraClient = createWalletClient({
-  account,
-  chain: zoraTestnet,
-  transport: http(),
-});
+const modeProvider = new JsonRpcProvider(modeProviderUrl);
+const modeWallet = new ethers.Wallet(process.env.BOT_PRIVATE_KEY, modeProvider);
 
-const optimismClient = createWalletClient({
-  account,
-  chain: optimismGoerli,
-  transport: http(),
-});
+const optimismRouterAddress = contracts.OptimismExternalRouter;
+const zoraRouterAddress = contracts.ZoraExternalRouter;
+const modeRouterAddress = contracts.ModeExternalRouter;
 
-const optimismRouter = getContract({
-  abi: externalRouter.abi,
-  address: optimismRouterAddress,
-  walletClient: optimismClient,
-});
-
-const zoraRouter = getContract({
-  abi: externalRouter.abi,
-  address: zoraRouterAddress,
-  walletClient: zoraClient,
-});
-
-// Get source chain ids
-const optimismChainId = await optimismRouter.read.currentChainId();
-const zoraChainId = await zoraRouter.read.currentChainId();
-
-// Find non-processed events
-console.log("Processing events on optimismRouter");
-const optimismQueue: Uint8Array[] =
-  (await optimismRouter.read.messageQueue()) as Uint8Array[];
-for (let item in optimismQueue) {
-  const values = decodeAbiParameters(
-    parseAbiParameters("uint16, bytes, bytes"),
-    `0x${item}`
-  );
-  const srcAddress = encodeAbiParameters(
-    parseAbiParameters("address, address"),
-    [optimismRouterAddress, zoraRouterAddress]
-  );
-
-  await zoraRouter.write.route([optimismChainId, srcAddress, values[2]]);
-  console.log(`Processed item ${item} on zoraRouter`);
-  await optimismRouter.write.pop();
-  console.log(`Popped item ${item} on optimismRouter`);
-}
-console.log(
-  optimismQueue.length === 0
-    ? "No events to process"
-    : "Processed events on optimismRouter"
+const optimismRouter = new ethers.Contract(
+  optimismRouterAddress,
+  externalRouter.abi,
+  optimismWallet
 );
 
-console.log("Processing events on zoraRouter...");
-const zoraQueue: Uint8Array[] =
-  (await zoraRouter.read.messageQueue()) as Uint8Array[];
-for (let item in zoraQueue) {
-  const values = decodeAbiParameters(
-    parseAbiParameters("uint16, bytes, bytes"),
-    `0x${item}`
-  );
-  const srcAddress = encodeAbiParameters(
-    parseAbiParameters("address, address"),
-    [zoraRouterAddress, optimismRouterAddress]
-  );
+const zoraRouter = new ethers.Contract(
+  zoraRouterAddress,
+  externalRouter.abi,
+  zoraWallet
+);
 
-  await optimismRouter.write.route([zoraChainId, srcAddress, values[2]]);
-  console.log(`Processed item ${item} on optimismRouter.`);
-  await zoraRouter.write.pop();
-  console.log(`Popped item ${item} on zoraRouter.`);
+const modeRouter = new ethers.Contract(
+  modeRouterAddress,
+  externalRouter.abi,
+  modeWallet
+);
+
+// Find non-processed messages
+console.log("Processing messages on optimismRouter");
+const optimismQueueLength = getNumber(await optimismRouter.queueLength());
+for (let i = optimismQueueLength - 1; i >= 0; i--) {
+  let message = await optimismRouter.messageQueue(i);
+  console.log(`Processing message: ${message}`);
+
+  let toChain: "zora" | "mode";
+  if (message[0] === 9999n) {
+    toChain = "zora";
+  } else if (message[0] === 9998n) {
+    toChain = "mode";
+  } else {
+    console.log("Message not for Zora or Mode, skipping...");
+    continue;
+  }
+
+  switch (toChain) {
+    case "zora":
+      await zoraRouter.route(processMessage(message, "optimism"));
+      console.log("Routed message to zoraRouter.");
+      break;
+    case "mode":
+      await modeRouter.route(processMessage(message, "optimism"));
+      console.log("Routed message to modeRouter.");
+      break;
+  }
+
+  await optimismRouter.pop();
+  console.log("Popped message on optimismRouter.");
+}
+
+console.log(
+  optimismQueueLength === 0
+    ? "No messages to process on optimismRouter."
+    : "Processed messages on optimismRouter."
+);
+
+console.log("Processing messages on zoraRouter...");
+const zoraQueueLength = getNumber(await zoraRouter.queueLength());
+for (let i = zoraQueueLength - 1; i >= 0; i--) {
+  let message = await zoraRouter.messageQueue(i);
+  console.log(`Processing message: ${message}`);
+
+  await optimismRouter.route(processMessage(message, "zora"));
+  console.log("Routed message to optimismRouter.");
+  await zoraRouter.pop();
+  console.log("Popped message on zoraRouter.");
 }
 console.log(
-  zoraQueue.length === 0
-    ? "No events to process."
-    : "Processed events on zoraRouter."
+  zoraQueueLength === 0
+    ? "No messages to process on zoraRouter."
+    : "Processed messages on zoraRouter."
+);
+
+console.log("Processing messages on modeRouter...");
+const modeQueueLength = getNumber(await modeRouter.queueLength());
+for (let i = modeQueueLength - 1; i >= 0; i--) {
+  let message = await modeRouter.messageQueue(i);
+  console.log(`Processing message: ${message}`);
+
+  await optimismRouter.route(processMessage(message, "mode"));
+  console.log("Routed message to optimismRouter.");
+  await modeRouter.pop();
+  console.log("Popped message on modeRouter.");
+}
+console.log(
+  modeQueueLength === 0
+    ? "No messages to process on modeRouter."
+    : "Processed messages on modeRouter."
 );
 
 // Listen for new events
-optimismRouter.watchEvent.MessageSent({
-  onLogs: (logs) => {
-    const data = logs[0].data;
-    console.log(`Received logs from optimismRouter: ${data}`);
-    const values = decodeAbiParameters(
-      parseAbiParameters("uint16, bytes, bytes"),
-      `0x${data}`
-    );
+optimismRouter.on("MessageSent", async (message) => {
+  console.log(`Received message from optimismRouter: ${message}`);
 
-    zoraRouter.write.route(values);
-    console.log(`Processed item ${data} on zoraRouter.`);
-    optimismRouter.write.pop();
-    console.log(`Popped item ${data} on optimismRouter.`);
-  },
+  let toChain: "zora" | "mode";
+  if (message[0] === 9999n) {
+    toChain = "zora";
+  } else if (message[0] === 9998n) {
+    toChain = "mode";
+  } else {
+    console.log("Message not for Zora or Mode, skipping...");
+    return;
+  }
+
+  switch (toChain) {
+    case "zora":
+      await zoraRouter.route(processMessage(message, "optimism"));
+      console.log("Routed message to zoraRouter.");
+      break;
+    case "mode":
+      await modeRouter.route(processMessage(message, "optimism"));
+      console.log("Routed message to modeRouter.");
+      break;
+  }
+
+  await optimismRouter.pop();
+  console.log(`Popped messages on optimismRouter.`);
 });
 
-zoraRouter.watchEvent.MessageSent({
-  onLogs: (logs) => {
-    const data = logs[0].data;
-    console.log(`Received logs from zoraRouter: ${data}`);
-    const values = decodeAbiParameters(
-      parseAbiParameters("uint16, bytes, bytes"),
-      `0x${data}`
-    );
+zoraRouter.on("MessageSent", async (message) => {
+  console.log(`Received message from zoraRouter: ${message}`);
 
-    optimismRouter.write.route(values);
-    console.log(`Processed item ${data} on optimismRouter.`);
-    zoraRouter.write.pop();
-    console.log(`Popped item ${data} on zoraRouter.`);
-  },
+  await optimismRouter.route(processMessage(message, "zora"));
+  console.log("Routed message to optimismRouter");
+  await zoraRouter.pop();
+  console.log("Popped message on zoraRouter.");
 });
 
-console.log("Listening for events...");
+modeRouter.on("MessageSent", async (message) => {
+  console.log(`Received message from modeRouter: ${message}`);
+
+  await optimismRouter.route(processMessage(message, "mode"));
+  console.log("Routed message to optimismRouter");
+  await modeRouter.pop();
+  console.log("Popped message on modeRouter.");
+});
+
+console.log("\nListening for new messages...");

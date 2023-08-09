@@ -19,7 +19,6 @@ contract OmniPayCore is Ownable, ILayerZeroReceiver {
     mapping(address => uint256) public balances;
     mapping(uint16 => bytes) public trustedRemoteLookup;
     mapping(bytes32 => bool) public processed;
-    mapping(uint16 => bool) public nonLayerZeroChains;
 
     IExternalRouter public externalRouter;
     ILayerZeroEndpoint public layerZeroEndpoint;
@@ -86,7 +85,7 @@ contract OmniPayCore is Ownable, ILayerZeroReceiver {
         bytes memory payload = abi.encode(from, amount);
         bytes memory remoteAndLocalAddresses = abi.encodePacked(fromAddress, address(this));
 
-        if (nonLayerZeroChains[_srcChainId]) {
+        if (msg.sender == address(externalRouter)) {
             externalRouter.send(
                 _srcChainId, remoteAndLocalAddresses, payload, payable(address(this)), address(0x0), bytes("")
             );

@@ -6,9 +6,15 @@ import {ILayerZeroReceiver} from "LayerZero/interfaces/ILayerZeroReceiver.sol";
 import {IExternalRouter} from "../interfaces/IExternalRouter.sol";
 
 contract ExternalRouter is IExternalRouter, Ownable {
-    event MessageSent(uint16 dstChainId, bytes destination, bytes payload);
+    struct Message {
+        uint16 chainId;
+        bytes addressCombination;
+        bytes payload;
+    }
 
-    bytes[] public messageQueue;
+    event MessageSent(Message message);
+
+    Message[] public messageQueue;
     uint16 public currentChainId;
     mapping(bytes => uint64) public lastNonces;
     ILayerZeroReceiver public omniPay;
@@ -28,9 +34,10 @@ contract ExternalRouter is IExternalRouter, Ownable {
     ) external override {
         require(msg.sender == address(omniPay), "ExternalRouter: Only OmniPay can call this function");
 
-        messageQueue.push(abi.encode(_dstChainId, _destination, _payload));
+        Message memory message = Message(_dstChainId, _destination, _payload);
+        messageQueue.push(message);
 
-        emit MessageSent(_dstChainId, _destination, _payload);
+        emit MessageSent(message);
     }
 
     function estimateFees(uint16, address, bytes calldata, bool, bytes calldata)
@@ -41,8 +48,14 @@ contract ExternalRouter is IExternalRouter, Ownable {
         return (0, 0);
     }
 
-    function route(uint16 _srcChainId, bytes calldata _srcAddress, bytes calldata _payload) external onlyOwner {
-        omniPay.lzReceive(_srcChainId, _srcAddress, ++lastNonces[_srcAddress], _payload);
+    function queueLength() external view returns (uint256) {
+        return messageQueue.length;
+    }
+
+    function route(Message calldata message) external onlyOwner {
+        omniPay.lzReceive(
+            message.chainId, message.addressCombination, ++lastNonces[message.addressCombination], message.payload
+        );
     }
 
     function pop() external onlyOwner {

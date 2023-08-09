@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
@@ -7,222 +7,158 @@ import {OmniPayClient} from "../src/OmniPayClient.sol";
 import {ExternalRouter} from "../src/router/ExternalRouter.sol";
 import {FakeUSDC} from "../src/util/FakeUSDC.sol";
 import {ILayerZeroEndpoint} from "LayerZero/interfaces/ILayerZeroEndpoint.sol";
+import {MultiRpcScript} from "./helpers/MultiRpcScript.sol";
+import {ContractConstants, JsonReader, JsonWriter} from "./helpers/ContractHelpers.sol";
 
-contract MultiRpcScript is Script {
-    uint256 _optimismFork = vm.createFork(vm.rpcUrl("optimism"));
-    uint256 _baseFork = vm.createFork(vm.rpcUrl("base"));
-    uint256 _zoraFork = vm.createFork(vm.rpcUrl("zora"));
-
-    function _changeToOptimismFork() internal {
-        vm.stopBroadcast();
-        vm.selectFork(_optimismFork);
-        vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
-    }
-
-    function _changeToBaseFork() internal {
-        vm.stopBroadcast();
-        vm.selectFork(_baseFork);
-        vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
-    }
-
-    function _changeToZoraFork() internal {
-        vm.stopBroadcast();
-        vm.selectFork(_zoraFork);
-        vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
-    }
-}
-
-contract JsonReader is Script {
+contract Deploy is MultiRpcScript, ContractConstants, JsonWriter {
     using stdJson for string;
 
-    struct Contracts {
-        address omniPayCore;
-        address baseOmniPay;
-        address zoraOmniPay;
-        address optimismUsdc;
-        address baseUsdc;
-        address zoraUsdc;
-    }
-
-    Contracts public contracts;
-
-    constructor() {
-        string memory json = vm.readFile("./out/contracts.json");
-
-        contracts.omniPayCore = json.readAddress(".OmniPayCore");
-        contracts.baseOmniPay = json.readAddress(".BaseOmniPayClient");
-        contracts.zoraOmniPay = json.readAddress(".ZoraOmniPayClient");
-        contracts.optimismUsdc = json.readAddress(".OptimismUSDC");
-        contracts.baseUsdc = json.readAddress(".BaseUSDC");
-        contracts.zoraUsdc = json.readAddress(".ZoraUSDC");
-    }
-}
-
-contract Deploy is MultiRpcScript {
-    using stdJson for string;
-
-    uint16 public optimismChainId = 10132;
-    address public optimismEndpoint = 0xae92d5aD7583AD66E49A0c67BAd18F6ba52dDDc1;
-    uint16 public baseChainId = 10160;
-    address public baseEndpoint = 0x6aB5Ae6822647046626e83ee6dB8187151E1d5ab;
-    uint16 public zoraChainId = 9999; // Doesn't exist
-    ExternalRouter public zoraEndpoint;
-
-    function run() public {
-        // initialize deployer
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
-        vm.startBroadcast(deployerPrivateKey);
-
+    function run() public cleanup {
         // select Optimism fork
-        _changeToOptimismFork();
+        selectOptimismFork();
 
         // create USDC
         FakeUSDC optimismUsdc = new FakeUSDC();
         console2.log("FakeUSDC - Optimism: ", address(optimismUsdc));
-        optimismUsdc.mint(deployer, 1_000_000_000e18);
+        optimismUsdc.mint(_deployer, 1_000_000_000e18);
 
         // create OmniPayCore
         OmniPayCore omniPayCore = new OmniPayCore(address(optimismUsdc), optimismEndpoint);
-        console2.log("OmniPayCore: ", address(omniPayCore));
-        optimismUsdc.mint(address(omniPayCore), 1_000_000_000e18);
-        optimismUsdc.approve(address(omniPayCore), type(uint256).max);
+        contracts.omniPayCore = address(omniPayCore);
+        console2.log("OmniPayCore: ", contracts.omniPayCore);
+        optimismUsdc.mint(contracts.omniPayCore, 1_000_000_000e18);
+        optimismUsdc.approve(contracts.omniPayCore, type(uint256).max);
 
         // create ExternalRouter
-        ExternalRouter optimismExternalRouter = new ExternalRouter(address(omniPayCore), optimismChainId);
-        console2.log("ExternalRouter - Optimism: ", address(optimismExternalRouter));
-        omniPayCore.setExternalRouter(address(optimismExternalRouter));
+        ExternalRouter optimismExternalRouter = new ExternalRouter(contracts.omniPayCore, optimismChainId);
+        contracts.optimismExternalRouter = address(optimismExternalRouter);
+        console2.log("ExternalRouter - Optimism: ", contracts.optimismExternalRouter);
+        omniPayCore.setExternalRouter(contracts.optimismExternalRouter);
 
         // select Base fork
-        _changeToBaseFork();
+        selectBaseFork();
 
         // create USDC
         FakeUSDC baseUsdc = new FakeUSDC();
-        console2.log("FakeUSDC - Base: ", address(baseUsdc));
-        baseUsdc.mint(deployer, 1_000_000_000e18);
+        contracts.baseUsdc = address(baseUsdc);
+        console2.log("FakeUSDC - Base: ", contracts.baseUsdc);
+        baseUsdc.mint(_deployer, 1_000_000_000e18);
 
         // create OmniPayClient
         OmniPayClient baseOmniPayClient =
-            new OmniPayClient(address(baseUsdc), baseEndpoint, address(omniPayCore), optimismChainId);
-        console2.log("OmniPayClient - Base: ", address(baseOmniPayClient));
-        baseUsdc.mint(address(baseOmniPayClient), 1_000_000_000e18);
-        baseUsdc.approve(address(baseOmniPayClient), type(uint256).max);
+            new OmniPayClient(contracts.baseUsdc, baseEndpoint, contracts.omniPayCore, optimismChainId);
+        contracts.baseOmniPay = address(baseOmniPayClient);
+        console2.log("OmniPayClient - Base: ", contracts.baseOmniPay);
+        baseUsdc.mint(contracts.baseOmniPay, 1_000_000_000e18);
+        baseUsdc.approve(contracts.baseOmniPay, type(uint256).max);
 
         // select Zora fork
-        _changeToZoraFork();
+        selectZoraFork();
 
         // create USDC
         FakeUSDC zoraUsdc = new FakeUSDC();
-        console2.log("FakeUSDC - Zora: ", address(zoraUsdc));
-        zoraUsdc.mint(deployer, 1_000_000_000e18);
+        contracts.zoraUsdc = address(zoraUsdc);
+        console2.log("FakeUSDC - Zora: ", contracts.zoraUsdc);
+        zoraUsdc.mint(_deployer, 1_000_000_000e18);
 
         // create OmniPayClient
         OmniPayClient zoraOmniPayClient =
-            new OmniPayClient(address(zoraUsdc), address(0), address(omniPayCore), optimismChainId);
-        console2.log("OmniPayClient - Zora: ", address(zoraOmniPayClient));
-        zoraUsdc.mint(address(zoraOmniPayClient), 1_000_000_000e18);
-        zoraUsdc.approve(address(zoraOmniPayClient), type(uint256).max);
-
-        // create ExternalRouter
-        zoraEndpoint = new ExternalRouter(address(zoraOmniPayClient), zoraChainId);
-        console2.log("ExternalRouter - Zora: ", address(zoraEndpoint));
-        zoraOmniPayClient.setLayerZeroEndpoint(address(zoraEndpoint));
-
-        // set trusted remote lookups on Optimism
-        _changeToOptimismFork();
-        omniPayCore.setTrustedRemoteLookup(
-            baseChainId, abi.encodePacked(address(baseOmniPayClient), address(omniPayCore))
-        );
-        omniPayCore.setTrustedRemoteLookup(
-            zoraChainId, abi.encodePacked(address(zoraOmniPayClient), address(omniPayCore))
-        );
-
-        // fund OmniPayCore
-        payable(address(omniPayCore)).transfer(0.1 ether);
-
-        // set trusted remote lookups on Base
-        _changeToBaseFork();
-        baseOmniPayClient.setTrustedRemoteLookup(
-            optimismChainId, abi.encodePacked(address(omniPayCore), address(baseOmniPayClient))
-        );
-
-        // fund OmniPayClient
-        payable(address(baseOmniPayClient)).transfer(0.1 ether);
-
-        // set trusted remote lookups on Zora
-        _changeToZoraFork();
-        zoraOmniPayClient.setTrustedRemoteLookup(
-            optimismChainId, abi.encodePacked(address(omniPayCore), address(zoraOmniPayClient))
-        );
-
-        // fund OmniPayClient
-        payable(address(zoraOmniPayClient)).transfer(0.1 ether);
-
-        // write results to json file
-        string memory json = "key";
-        json.serialize("OmniPayCore", address(omniPayCore));
-        json.serialize("OptimismExternalRouter", address(optimismExternalRouter));
-        json.serialize("BaseOmniPayClient", address(baseOmniPayClient));
-        json.serialize("ZoraOmniPayClient", address(zoraOmniPayClient));
-        json.serialize("ZoraExternalRouter", address(zoraEndpoint));
-        json.serialize("OptimismUSDC", address(optimismUsdc));
-        json.serialize("BaseUSDC", address(baseUsdc));
-        json = json.serialize("ZoraUSDC", address(zoraUsdc));
-
-        vm.writeFile("./out/contracts.json", json);
-
-        vm.stopBroadcast();
-    }
-}
-
-contract Approve is MultiRpcScript, JsonReader {
-    function run() public {
-        vm.startBroadcast();
-
-        _changeToOptimismFork();
-        FakeUSDC optimismUsdc = FakeUSDC(contracts.optimismUsdc);
-        optimismUsdc.approve(contracts.omniPayCore, type(uint256).max);
-
-        _changeToBaseFork();
-        FakeUSDC baseUsdc = FakeUSDC(contracts.baseUsdc);
-        baseUsdc.approve(contracts.baseOmniPay, type(uint256).max);
-
-        _changeToZoraFork();
-        FakeUSDC zoraUsdc = FakeUSDC(contracts.zoraUsdc);
+            new OmniPayClient(contracts.zoraUsdc, address(0), contracts.omniPayCore, optimismChainId);
+        contracts.zoraOmniPay = address(zoraOmniPayClient);
+        console2.log("OmniPayClient - Zora: ", contracts.zoraOmniPay);
+        zoraUsdc.mint(contracts.zoraOmniPay, 1_000_000_000e18);
         zoraUsdc.approve(contracts.zoraOmniPay, type(uint256).max);
 
-        vm.stopBroadcast();
+        // create ExternalRouter
+        ExternalRouter zoraExternalRouter = new ExternalRouter(contracts.zoraOmniPay, zoraChainId);
+        contracts.zoraExternalRouter = address(zoraExternalRouter);
+        console2.log("ExternalRouter - Zora: ", contracts.zoraExternalRouter);
+        zoraOmniPayClient.setLayerZeroEndpoint(contracts.zoraExternalRouter);
+
+        // select Mode fork
+        selectModeFork();
+
+        // create USDC
+        FakeUSDC modeUsdc = new FakeUSDC();
+        contracts.modeUsdc = address(modeUsdc);
+        console2.log("FakeUSDC - Mode: ", contracts.modeUsdc);
+        modeUsdc.mint(_deployer, 1_000_000_000e18);
+
+        // create OmniPayClient
+        OmniPayClient modeOmniPayClient =
+            new OmniPayClient(contracts.modeUsdc, address(0), contracts.omniPayCore, optimismChainId);
+        contracts.modeOmniPay = address(modeOmniPayClient);
+        console2.log("OmniPayClient - Mode: ", contracts.modeOmniPay);
+        modeUsdc.mint(contracts.modeOmniPay, 1_000_000_000e18);
+        modeUsdc.approve(contracts.modeOmniPay, type(uint256).max);
+
+        // create ExternalRouter
+        ExternalRouter modeExternalRouter = new ExternalRouter(contracts.modeOmniPay, modeChainId);
+        contracts.modeExternalRouter = address(modeExternalRouter);
+        console2.log("ExternalRouter - Mode: ", contracts.modeExternalRouter);
+        modeOmniPayClient.setLayerZeroEndpoint(contracts.modeExternalRouter);
+
+        // set trusted remote lookups on Optimism
+        selectOptimismFork();
+        omniPayCore.setTrustedRemoteLookup(baseChainId, abi.encodePacked(contracts.baseOmniPay, contracts.omniPayCore));
+        omniPayCore.setTrustedRemoteLookup(zoraChainId, abi.encodePacked(contracts.zoraOmniPay, contracts.omniPayCore));
+        omniPayCore.setTrustedRemoteLookup(modeChainId, abi.encodePacked(contracts.modeOmniPay, contracts.omniPayCore));
+
+        // fund OmniPayCore
+        payable(contracts.omniPayCore).transfer(0.1 ether);
+
+        // set trusted remote lookups on Base
+        selectBaseFork();
+        baseOmniPayClient.setTrustedRemoteLookup(
+            optimismChainId, abi.encodePacked(contracts.omniPayCore, contracts.baseOmniPay)
+        );
+
+        // fund OmniPayClient
+        payable(contracts.baseOmniPay).transfer(0.1 ether);
+
+        // set trusted remote lookups on Zora
+        selectZoraFork();
+        zoraOmniPayClient.setTrustedRemoteLookup(
+            optimismChainId, abi.encodePacked(contracts.omniPayCore, contracts.baseOmniPay)
+        );
+
+        // fund OmniPayClient
+        payable(contracts.zoraOmniPay).transfer(0.1 ether);
+
+        // set trusted remote lookups on Mode
+        selectModeFork();
+        modeOmniPayClient.setTrustedRemoteLookup(
+            optimismChainId, abi.encodePacked(contracts.omniPayCore, contracts.baseOmniPay)
+        );
+
+        // fund OmniPayClient
+        payable(contracts.modeOmniPay).transfer(0.1 ether);
+
+        writeToJson();
     }
 }
 
 contract Deposit is MultiRpcScript, JsonReader {
-    function run() public {
-        vm.startBroadcast();
-        _changeToBaseFork();
+    function run() public cleanup {
+        selectBaseFork();
 
         OmniPayClient baseOmniPayClient = OmniPayClient(payable(contracts.baseOmniPay));
         baseOmniPayClient.deposit(10e18);
-
-        vm.stopBroadcast();
     }
 }
 
 contract Withdraw is MultiRpcScript, JsonReader {
-    function run() public {
-        vm.startBroadcast();
-        _changeToBaseFork();
+    function run() public cleanup {
+        selectBaseFork();
 
         OmniPayClient baseOmniPayClient = OmniPayClient(payable(contracts.baseOmniPay));
         baseOmniPayClient.withdraw(10e18);
-
-        vm.stopBroadcast();
     }
 }
 
 contract CheckBalance is MultiRpcScript, JsonReader {
-    function run() public {
-        vm.startBroadcast();
-        _changeToOptimismFork();
+    function run() public cleanup {
+        selectOptimismFork();
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
@@ -230,28 +166,26 @@ contract CheckBalance is MultiRpcScript, JsonReader {
         OmniPayCore omniPayCore = OmniPayCore(payable(contracts.omniPayCore));
         console2.log("Deployer address: ", deployer);
         console2.log("Current deployer USDC balance: ", omniPayCore.balances(deployer));
-
-        vm.stopBroadcast();
     }
 }
 
 contract WithdrawEthFromAll is MultiRpcScript, JsonReader {
-    function run() public {
-        vm.startBroadcast();
-
-        _changeToOptimismFork();
+    function run() public cleanup {
+        selectOptimismFork();
 
         OmniPayCore omniPayCore = OmniPayCore(payable(contracts.omniPayCore));
         omniPayCore.withdrawEth();
 
-        _changeToBaseFork();
+        selectBaseFork();
         OmniPayClient baseOmniPayClient = OmniPayClient(payable(contracts.baseOmniPay));
         baseOmniPayClient.withdrawEth();
 
-        _changeToZoraFork();
+        selectZoraFork();
         OmniPayClient zoraOmniPayClient = OmniPayClient(payable(contracts.zoraOmniPay));
         zoraOmniPayClient.withdrawEth();
 
-        vm.stopBroadcast();
+        selectModeFork();
+        OmniPayClient modeOmniPayClient = OmniPayClient(payable(contracts.modeOmniPay));
+        modeOmniPayClient.withdrawEth();
     }
 }

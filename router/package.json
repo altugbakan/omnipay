@@ -5,7 +5,7 @@
   "type": "module",
   "main": "router.js",
   "scripts": {
-    "prestart": "cd ../contracts && forge build && mkdir -p ../router/abi && cp ./out/ExternalRouter.sol/ExternalRouter.json ../router/abi/",
+    "prestart": "mkdir -p ./abi && cp ../contracts/out/ExternalRouter.sol/ExternalRouter.json ./abi/ && cp ../contracts/out/contracts.json ./abi/",
     "start": "npm run tsc && node --no-warnings dist/router.js",
     "tsc": "./node_modules/typescript/bin/tsc"
   },
@@ -16,9 +16,10 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.3.1",
-    "viem": "^1.5.3"
+    "ethers": "^6.7.0"
   },
   "devDependencies": {
+    "@types/node": "^20.4.9",
     "typescript": "^5.1.6"
   }
 }
