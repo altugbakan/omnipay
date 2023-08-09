@@ -8,6 +8,14 @@ import {ILayerZeroReceiver} from "LayerZero/interfaces/ILayerZeroReceiver.sol";
 import {IExternalRouter} from "./interfaces/IExternalRouter.sol";
 
 contract OmniPayCore is Ownable, ILayerZeroReceiver {
+    event LzCall(uint16 srcChainId, bytes srcAddress, uint64 nonce, bytes payload);
+    event HashAlreadyProcessed();
+    event InvalidEndpoint();
+    event LookupNotTrusted();
+    event Deposited(address user, uint256 amount);
+    event Withdrawn(address user, uint256 amount);
+    event NotEnoughBalance();
+
     mapping(address => uint256) public balances;
     mapping(uint16 => bytes) public trustedRemoteLookup;
     mapping(bytes32 => bool) public processed;
@@ -37,17 +45,21 @@ contract OmniPayCore is Ownable, ILayerZeroReceiver {
         external
         override
     {
+        emit LzCall(_srcChainId, _srcAddress, _nonce, _payload);
         bytes32 hash = keccak256(abi.encodePacked(_srcChainId, _srcAddress, _nonce, _payload));
         if (processed[hash]) {
+            emit HashAlreadyProcessed();
             return;
         }
         processed[hash] = true;
 
-        if (msg.sender != address(layerZeroEndpoint) || msg.sender != address(externalRouter)) {
+        if (msg.sender != address(layerZeroEndpoint) && msg.sender != address(externalRouter)) {
+            emit InvalidEndpoint();
             return;
         }
 
         if (keccak256(_srcAddress) != keccak256(trustedRemoteLookup[_srcChainId])) {
+            emit LookupNotTrusted();
             return;
         }
 
@@ -55,24 +67,28 @@ contract OmniPayCore is Ownable, ILayerZeroReceiver {
 
         if (isDeposit) {
             balances[from] += amount;
+            emit Deposited(from, amount);
+            return;
         } else {
             if (balances[from] < amount) {
+                emit NotEnoughBalance();
                 return;
             }
             balances[from] -= amount;
+            emit Withdrawn(from, balances[from]);
         }
-
-        bytes memory remoteAndLocalAddresses = abi.encodePacked(_srcAddress, address(this));
-        bytes memory payload = abi.encode(from, amount);
 
         address fromAddress;
         assembly {
             fromAddress := mload(add(_srcAddress, 20))
         }
 
+        bytes memory payload = abi.encode(from, amount);
+        bytes memory remoteAndLocalAddresses = abi.encodePacked(fromAddress, address(this));
+
         if (nonLayerZeroChains[_srcChainId]) {
             externalRouter.send(
-                _srcChainId, remoteAndLocalAddresses, payload, payable(msg.sender), address(0x0), bytes("")
+                _srcChainId, remoteAndLocalAddresses, payload, payable(address(this)), address(0x0), bytes("")
             );
             return;
         }
@@ -80,7 +96,7 @@ contract OmniPayCore is Ownable, ILayerZeroReceiver {
         (uint256 nativeFee,) = layerZeroEndpoint.estimateFees(_srcChainId, fromAddress, _payload, false, bytes(""));
 
         layerZeroEndpoint.send{value: nativeFee}(
-            _srcChainId, remoteAndLocalAddresses, payload, payable(msg.sender), address(0x0), bytes("")
+            _srcChainId, remoteAndLocalAddresses, payload, payable(address(this)), address(0x0), bytes("")
         );
     }
 
@@ -100,7 +116,7 @@ contract OmniPayCore is Ownable, ILayerZeroReceiver {
         usdc = IERC20(_usdc);
     }
 
-    function withdraw() external onlyOwner {
+    function withdrawEth() external onlyOwner {
         (bool success,) = payable(msg.sender).call{value: address(this).balance}("");
         require(success, "OmniPayCore: Withdraw failed");
     }

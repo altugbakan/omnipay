@@ -2,6 +2,7 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+fs_permissions = [{ access = "read-write", path = "./out"}]
 
 [rpc_endpoints]
 optimism = "https://optimism-goerli.publicnode.com"

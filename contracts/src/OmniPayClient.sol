@@ -7,6 +7,11 @@ import {ILayerZeroEndpoint} from "LayerZero/interfaces/ILayerZeroEndpoint.sol";
 import {ILayerZeroReceiver} from "LayerZero/interfaces/ILayerZeroReceiver.sol";
 
 contract OmniPayClient is Ownable, ILayerZeroReceiver {
+    event LzCall(uint16 srcChainId, bytes srcAddress, uint64 nonce, bytes payload);
+    event HashAlreadyProcessed();
+    event InvalidEndpoint();
+    event LookupNotTrusted();
+
     mapping(uint16 => bytes) public trustedRemoteLookup;
     mapping(bytes32 => bool) public processed;
 
@@ -36,9 +41,10 @@ contract OmniPayClient is Ownable, ILayerZeroReceiver {
         bytes memory payload = abi.encode(msg.sender, amount, isDeposit);
         bytes memory remoteAndLocalAddresses = abi.encodePacked(coreAddress, address(this));
 
-        (uint256 nativeFee,) = layerZeroEndpoint.estimateFees(coreChainId, coreAddress, payload, false, bytes(""));
+        bytes memory adapterParams = isDeposit ? bytes("") : abi.encodePacked(uint16(1), uint256(500000));
+        (uint256 nativeFee,) = layerZeroEndpoint.estimateFees(coreChainId, coreAddress, payload, false, adapterParams);
         layerZeroEndpoint.send{value: nativeFee}(
-            coreChainId, remoteAndLocalAddresses, payload, payable(msg.sender), address(0x0), bytes("")
+            coreChainId, remoteAndLocalAddresses, payload, payable(address(this)), address(0x0), adapterParams
         );
     }
 
@@ -47,17 +53,21 @@ contract OmniPayClient is Ownable, ILayerZeroReceiver {
         external
         override
     {
+        emit LzCall(_srcChainId, _srcAddress, _nonce, _payload);
         bytes32 hash = keccak256(abi.encodePacked(_srcChainId, _srcAddress, _nonce, _payload));
         if (processed[hash]) {
+            emit HashAlreadyProcessed();
             return;
         }
         processed[hash] = true;
 
         if (msg.sender != address(layerZeroEndpoint)) {
+            emit InvalidEndpoint();
             return;
         }
 
         if (keccak256(_srcAddress) != keccak256(trustedRemoteLookup[_srcChainId])) {
+            emit LookupNotTrusted();
             return;
         }
 
@@ -86,7 +96,7 @@ contract OmniPayClient is Ownable, ILayerZeroReceiver {
         usdc = IERC20(_usdc);
     }
 
-    function withdraw() external onlyOwner {
+    function withdrawEth() external onlyOwner {
         (bool success,) = payable(msg.sender).call{value: address(this).balance}("");
         require(success, "OmniPayClient: Withdraw failed");
     }
