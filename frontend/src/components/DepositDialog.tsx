@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import ChainSelector from "./ChainSelector";
 import { toBigInt } from "../utils/bigIntHelpers";
 import { useDebounce } from "use-debounce";
+import { useNavigate } from "react-router-dom";
 
 export default function DepositDialog({ className }: { className?: string }) {
   const { chain } = useNetwork();
@@ -20,6 +21,7 @@ export default function DepositDialog({ className }: { className?: string }) {
   const [amount, setAmount] = useState(0);
   const [debouncedAmount] = useDebounce(amount, 500);
   const [needsApproval, setNeedsApproval] = useState(false);
+  const navigate = useNavigate();
 
   const {
     data: allowance,
@@ -74,8 +76,16 @@ export default function DepositDialog({ className }: { className?: string }) {
     );
   }, [allowance, debouncedAmount, isAllowanceLoading, isApproveSuccess]);
 
+  useEffect(() => {
+    if (isDepositSuccess) {
+      setTimeout(() => {
+        navigate(0);
+      }, 5000);
+    }
+  }, [isDepositSuccess, navigate]);
+
   return (
-    <div className={`card bg-base w-fit shadow-xl ${className}`}>
+    <div className={`card bg-base-100 w-fit shadow-xl ${className}`}>
       <div className="card-body">
         <h2 className="card-title">Select a chain</h2>
         <ChainSelector />
@@ -110,10 +120,9 @@ export default function DepositDialog({ className }: { className?: string }) {
             </button>
           )}
         </div>
-        {isDepositLoading ||
-          (isAllowanceLoading && (
-            <div className="text-info">Confirm in your wallet...</div>
-          ))}
+        {isDepositLoading && (
+          <div className="text-info">Confirm in your wallet...</div>
+        )}
         {isDepositSuccess && (
           <div className="text-success">Deposit successful!</div>
         )}

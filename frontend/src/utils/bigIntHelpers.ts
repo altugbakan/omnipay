@@ -3,8 +3,7 @@ export function toFixed(num?: BigInt): string {
     return "0.00";
   }
 
-  let numValue = num.valueOf() / BigInt(10 ** 18);
-  return Number(numValue.toString()).toFixed(2);
+  return num.toString().slice(0, -18) + "." + num.toString().slice(-18, -16);
 }
 
 export function toBigInt(num?: number): BigInt {
@@ -20,5 +19,5 @@ export function toNumber(num?: BigInt): number {
     return 0;
   }
 
-  return Number(num.valueOf() / BigInt(10 ** 18));
+  return Number(toFixed(num));
 }

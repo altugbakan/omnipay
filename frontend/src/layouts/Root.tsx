@@ -4,7 +4,7 @@ import Footer from "../components/Footer";
 
 export default function Root() {
   return (
-    <div className="flex flex-col justify-between h-full">
+    <div className="flex flex-col justify-between h-full bg-gradient-to-br from-base-100 to-base-200">
       <div>
         <NavBar />
         <div className="divider m-0" />

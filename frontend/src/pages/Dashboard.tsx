@@ -9,7 +9,7 @@ export default function Dashboard() {
   return (
     <>
       {isConnected ? null : <Navigate to="/" />}
-      <div className="flex flex-row items-center justify-center p-16">
+      <div className="flex flex-row items-center justify-center p-16 gap-4">
         <BalanceDialog />
         <DepositWithdrawDialog className="w-80" />
       </div>

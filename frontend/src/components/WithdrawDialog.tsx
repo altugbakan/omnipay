@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ChainSelector from "./ChainSelector";
 import { useDebounce } from "use-debounce";
 import {
@@ -15,12 +15,24 @@ import { optimismGoerli } from "wagmi/chains";
 import { toBigInt, toNumber } from "../utils/bigIntHelpers";
 import { getOmniPayAddress } from "../utils/addressHelpers";
 import omniPayClient from "../abi/OmniPayClient.json";
+import { useNavigate } from "react-router-dom";
 
 export default function WithdrawDialog({ className }: { className?: string }) {
   const { address } = useAccount();
   const { chain } = useNetwork();
   const [amount, setAmount] = useState(0);
   const [debouncedAmount] = useDebounce(amount, 500);
+  const navigate = useNavigate();
+
+  const {
+    data: omniPayCoreBalance,
+  }: { data: BigInt | undefined; isLoading: boolean } = useContractRead({
+    address: contracts.OmniPayCore as `0x${string}`,
+    abi: omniPayCore.abi,
+    chainId: optimismGoerli.id,
+    functionName: "balances",
+    args: [address],
+  });
 
   const { config: withdrawConfig } = usePrepareContractWrite({
     address: getOmniPayAddress(chain?.id) as `0x${string}`,
@@ -38,18 +50,16 @@ export default function WithdrawDialog({ className }: { className?: string }) {
     hash: approveData?.hash,
   });
 
-  const {
-    data: omniPayCoreBalance,
-  }: { data: BigInt | undefined; isLoading: boolean } = useContractRead({
-    address: contracts.OmniPayCore as `0x${string}`,
-    abi: omniPayCore.abi,
-    chainId: optimismGoerli.id,
-    functionName: "balances",
-    args: [address],
-  });
+  useEffect(() => {
+    if (isWithdrawSuccess) {
+      setTimeout(() => {
+        navigate(0);
+      }, 5000);
+    }
+  }, [isWithdrawSuccess, navigate]);
 
   return (
-    <div className={`card bg-base w-fit shadow-xl ${className}`}>
+    <div className={`card bg-base-100 w-fit shadow-xl ${className}`}>
       <div className="card-body">
         <h2 className="card-title">Select a chain</h2>
         <ChainSelector />

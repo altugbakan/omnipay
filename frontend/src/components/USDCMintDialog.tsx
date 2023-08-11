@@ -4,13 +4,17 @@ import {
   useContractWrite,
   useNetwork,
   usePrepareContractWrite,
+  useWaitForTransaction,
 } from "wagmi";
 import { getUsdcAddress } from "../utils/addressHelpers";
 import fakeUSDC from "../abi/FakeUSDC.json";
+import { Navigate, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 export default function USDCMintDialog({ className }: { className?: string }) {
   const { chain } = useNetwork();
   const { address } = useAccount();
+  const navigate = useNavigate();
 
   const {
     data: isMinted,
@@ -30,14 +34,23 @@ export default function USDCMintDialog({ className }: { className?: string }) {
     functionName: "mintOnce",
     args: [address],
   });
-  const { write, isLoading, isSuccess } = useContractWrite(config);
+  const { write, isLoading, data } = useContractWrite(config);
+  const { isSuccess, isLoading: isMinting } = useWaitForTransaction({
+    hash: data?.hash,
+  });
 
-  if (isSuccess || isMintedLoading || isMinted) {
+  useEffect(() => {
+    if (isSuccess) {
+      setTimeout(() => navigate(0), 2000);
+    }
+  }, [isSuccess, navigate]);
+
+  if (isMintedLoading || isMinted) {
     return null;
   }
 
   return (
-    <div className={`card w-96 bg-base shadow-xl ${className}`}>
+    <div className={`card w-96 bg-base-100 shadow-xl ${className}`}>
       <div className="card-body">
         <h2 className="card-title">Need USDC?</h2>
         <button
@@ -50,6 +63,8 @@ export default function USDCMintDialog({ className }: { className?: string }) {
         {isLoading && (
           <div className="text-info">Confirm in your wallet...</div>
         )}
+        {isMinting && <div className="text-info">Minting...</div>}
+        {isSuccess && <div className="text-success">Minted!</div>}
       </div>
     </div>
   );

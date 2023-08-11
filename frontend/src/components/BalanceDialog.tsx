@@ -33,7 +33,7 @@ export default function BalanceDialog() {
   });
 
   return (
-    <div className="card w-96 bg-base shadow-xl">
+    <div className="card w-96 bg-base-100 shadow-xl">
       <div className="card-body">
         <h2 className="card-title text-secondary">Your OmniPay Balance</h2>
         <p className="flex justify-center align-middle gap-1">

@@ -8,7 +8,7 @@ export default function DepositWithdrawDialog({
 }) {
   return (
     <div
-      className={`card flex flex-col gap-4 w-48 bg-base shadow-xl ${className}`}
+      className={`card flex flex-col gap-4 w-48 bg-base-100 shadow-xl ${className}`}
     >
       <div className="card-body">
         <Link to="/deposit" className="btn btn-primary flex flex-row">
