@@ -5,7 +5,7 @@ import ChainSelector from "./ChainSelector";
 
 export default function NavBar() {
   return (
-    <nav className="navbar px-8">
+    <nav className="navbar px-8 mt-2">
       <div className="navbar-start">
         <NavLink to="/" className="flex flex-row gap-2 btn btn-ghost p-1">
           <img
@@ -13,7 +13,7 @@ export default function NavBar() {
             alt="OmniPay"
             className="w-8 h-8 rounded-full"
           />
-          <h2 className="text-xl text-primary">OmniPay</h2>
+          <h2 className="text-2xl text-primary">OmniPay</h2>
         </NavLink>
       </div>
       <div className="navbar-center flex gap-2">

@@ -11,14 +11,14 @@ export default function ChainSelector({ className }: { className?: string }) {
   const { chains, switchNetwork } = useSwitchNetwork();
 
   const chainList = [
-    { name: "Optimism", id: optimismGoerli.id },
-    { name: "Base", id: baseGoerli.id },
-    { name: "Zora", id: zoraTestnet.id },
-    { name: "Mode", id: modeTestnet.id },
+    { name: "🔴 Optimism", id: optimismGoerli.id },
+    { name: "🔵 Base", id: baseGoerli.id },
+    { name: "🪩 Zora", id: zoraTestnet.id },
+    { name: "🌐 Mode", id: modeTestnet.id },
   ] as const;
 
   function switchToChain(chainName: "Optimism" | "Base" | "Zora" | "Mode") {
-    switchNetwork?.(chainList.find((c) => c.name === chainName)!.id);
+    switchNetwork?.(chainList.find((c) => c.name.includes(chainName))!.id);
   }
 
   if (!chain) {
@@ -40,7 +40,7 @@ export default function ChainSelector({ className }: { className?: string }) {
     <select
       onChange={(e) => switchToChain(e.target.value as any)}
       value={chainList.find((c) => c.id === chain.id)!.name}
-      className={`select select-md select-primary ${className}`}
+      className={`select select-md select-primary text-lg ${className}`}
     >
       {chainList.map((c) => (
         <option key={c.name} value={c.name}>

@@ -120,7 +120,7 @@ contract Deploy is MultiRpcScript, ContractConstants, JsonWriter {
         // set trusted remote lookups on Zora
         selectZoraFork();
         zoraOmniPayClient.setTrustedRemoteLookup(
-            optimismChainId, abi.encodePacked(contracts.omniPayCore, contracts.baseOmniPay)
+            optimismChainId, abi.encodePacked(contracts.omniPayCore, contracts.zoraOmniPay)
         );
 
         // fund OmniPayClient
@@ -129,7 +129,7 @@ contract Deploy is MultiRpcScript, ContractConstants, JsonWriter {
         // set trusted remote lookups on Mode
         selectModeFork();
         modeOmniPayClient.setTrustedRemoteLookup(
-            optimismChainId, abi.encodePacked(contracts.omniPayCore, contracts.baseOmniPay)
+            optimismChainId, abi.encodePacked(contracts.omniPayCore, contracts.modeOmniPay)
         );
 
         // fund OmniPayClient
@@ -185,5 +185,24 @@ contract WithdrawEthFromAll is MultiRpcScript, JsonReader {
         selectModeFork();
         OmniPayClient modeOmniPayClient = OmniPayClient(payable(contracts.modeOmniPay));
         modeOmniPayClient.withdrawEth();
+    }
+}
+
+contract Fix is MultiRpcScript, JsonReader, ContractConstants {
+    function run() public cleanup {
+        // set trusted remote lookups on Zora
+        selectZoraFork();
+        OmniPayClient(payable(contracts.zoraOmniPay)).setTrustedRemoteLookup(
+            optimismChainId, abi.encodePacked(contracts.omniPayCore, contracts.zoraOmniPay)
+        );
+
+        // fund OmniPayClient
+        payable(contracts.zoraOmniPay).transfer(0.1 ether);
+
+        // set trusted remote lookups on Mode
+        selectModeFork();
+        OmniPayClient(payable(contracts.modeOmniPay)).setTrustedRemoteLookup(
+            optimismChainId, abi.encodePacked(contracts.omniPayCore, contracts.modeOmniPay)
+        );
     }
 }

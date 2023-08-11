@@ -175,7 +175,7 @@ optimismRouter.on("MessageSent", async (message) => {
   }
 
   await optimismRouter.pop();
-  console.log(`Popped messages on optimismRouter.`);
+  console.log(`Popped message on optimismRouter.`);
 });
 
 zoraRouter.on("MessageSent", async (message) => {
