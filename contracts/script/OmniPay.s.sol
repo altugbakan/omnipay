@@ -160,12 +160,9 @@ contract CheckBalance is MultiRpcScript, JsonReader {
     function run() public cleanup {
         selectOptimismFork();
 
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
-
         OmniPayCore omniPayCore = OmniPayCore(payable(contracts.omniPayCore));
-        console2.log("Deployer address: ", deployer);
-        console2.log("Current deployer USDC balance: ", omniPayCore.balances(deployer));
+        console2.log("Deployer address: ", _deployer);
+        console2.log("Current deployer USDC balance: ", omniPayCore.balances(_deployer));
     }
 }
 
