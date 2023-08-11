@@ -19,11 +19,12 @@ contract Deploy is MultiRpcScript, ContractConstants, JsonWriter {
 
         // create USDC
         FakeUSDC optimismUsdc = new FakeUSDC();
-        console2.log("FakeUSDC - Optimism: ", address(optimismUsdc));
+        contracts.optimismUsdc = address(optimismUsdc);
+        console2.log("FakeUSDC - Optimism: ", contracts.optimismUsdc);
         optimismUsdc.mint(_deployer, 1_000_000_000e18);
 
         // create OmniPayCore
-        OmniPayCore omniPayCore = new OmniPayCore(address(optimismUsdc), optimismEndpoint);
+        OmniPayCore omniPayCore = new OmniPayCore( contracts.optimismUsdc, optimismEndpoint);
         contracts.omniPayCore = address(omniPayCore);
         console2.log("OmniPayCore: ", contracts.omniPayCore);
         optimismUsdc.mint(contracts.omniPayCore, 1_000_000_000e18);

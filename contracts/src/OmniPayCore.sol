@@ -29,9 +29,9 @@ contract OmniPayCore is Ownable, ILayerZeroReceiver {
         layerZeroEndpoint = ILayerZeroEndpoint(_layerZeroEndpoint);
     }
 
-    function deposit(address token, uint256 amount) external {
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
-        balances[token] += amount;
+    function deposit(uint256 amount) external {
+        usdc.transferFrom(msg.sender, address(this), amount);
+        balances[msg.sender] += amount;
     }
 
     function withdraw(uint256 amount) external {

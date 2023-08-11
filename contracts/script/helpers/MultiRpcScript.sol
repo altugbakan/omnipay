@@ -22,25 +22,25 @@ contract MultiRpcScript is Script {
         vm.startBroadcast(_deployerPrivateKey);
     }
 
-    function selectOptimismFork() internal {
+    function selectOptimismFork() public {
         vm.stopBroadcast();
         vm.selectFork(_optimismFork);
         vm.startBroadcast(_deployerPrivateKey);
     }
 
-    function selectBaseFork() internal {
+    function selectBaseFork() public {
         vm.stopBroadcast();
         vm.selectFork(_baseFork);
         vm.startBroadcast(_deployerPrivateKey);
     }
 
-    function selectZoraFork() internal {
+    function selectZoraFork() public {
         vm.stopBroadcast();
         vm.selectFork(_zoraFork);
         vm.startBroadcast(_deployerPrivateKey);
     }
 
-    function selectModeFork() internal {
+    function selectModeFork() public {
         vm.stopBroadcast();
         vm.selectFork(_modeFork);
         vm.startBroadcast(_deployerPrivateKey);
