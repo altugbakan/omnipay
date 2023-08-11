@@ -4,20 +4,24 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "mkdir -p ./src/abi && cp ../contracts/out/contracts.json ./src/abi/",
+    "predev": "mkdir -p ./src/abi && cp ../contracts/out/contracts.json ./src/abi/ && cp ../contracts/out/OmniPayCore.sol/OmniPayCore.json ./src/abi/ && cp ../contracts/out/OmniPayClient.sol/OmniPayClient.json ./src/abi/ && cp ../contracts/out/FakeUSDC.sol/FakeUSDC.json ./src/abi/",
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-icons": "^4.10.1",
+    "react-router-dom": "^6.15.0",
+    "use-debounce": "^9.0.4",
     "viem": "^1.5.4",
     "wagmi": "^1.3.10"
   },
   "devDependencies": {
-    "@types/react": "^18.2.15",
+    "@types/node": "^20.4.9",
+    "@types/react": "^18.2.20",
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.3",
     "autoprefixer": "^10.4.14",
@@ -28,6 +32,8 @@
     "eslint-plugin-react-refresh": "^0.4.3",
     "postcss": "^8.4.27",
     "tailwindcss": "^3.3.3",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6",
     "vite": "^4.4.5"
   }
 }

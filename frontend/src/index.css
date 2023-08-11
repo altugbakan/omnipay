@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .btn {
+    text-transform: none;
+  }
+}
+
+html,
+body,
+div#root {
+  height: 100%;
+}
