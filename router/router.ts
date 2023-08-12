@@ -5,7 +5,7 @@ import { JsonRpcProvider } from "ethers";
 import dotenv from "dotenv";
 dotenv.config();
 
-function rotateHexString(hexString: string): string {
+function replaceSenderAndReceiver(hexString: string): string {
   hexString = hexString.replace("0x", "");
   hexString =
     hexString.slice(hexString.length / 2) +
@@ -32,7 +32,7 @@ function processMessage(
       break;
   }
 
-  message[1] = rotateHexString(message[1]);
+  message[1] = replaceSenderAndReceiver(message[1]);
 
   return message;
 }
@@ -77,123 +77,145 @@ const modeRouter = new ethers.Contract(
   modeWallet
 );
 
-// Find non-processed messages
-console.log("Processing messages on optimismRouter");
-const optimismQueueLength = getNumber(await optimismRouter.queueLength());
-for (let i = optimismQueueLength - 1; i >= 0; i--) {
-  let message = await optimismRouter.messageQueue(i);
-  console.log(`Processing message: ${message}`);
+async function processMessages() {
+  // Find non-processed messages
+  console.log("Processing messages on optimismRouter");
+  const optimismQueueLength = getNumber(await optimismRouter.queueLength());
+  for (let i = optimismQueueLength - 1; i >= 0; i--) {
+    let message = await optimismRouter.messageQueue(i);
+    console.log(`Processing message: ${message}`);
 
-  let toChain: "zora" | "mode";
-  if (message[0] === 9999n) {
-    toChain = "zora";
-  } else if (message[0] === 9998n) {
-    toChain = "mode";
-  } else {
-    console.log("Message not for Zora or Mode, skipping...");
-    continue;
+    let toChain: "zora" | "mode";
+    if (message[0] === 9999n) {
+      toChain = "zora";
+    } else if (message[0] === 9998n) {
+      toChain = "mode";
+    } else {
+      console.log("Message not for Zora or Mode, skipping...");
+      continue;
+    }
+
+    switch (toChain) {
+      case "zora":
+        await zoraRouter.route(processMessage(message, "optimism"));
+        console.log("Routed message to zoraRouter.");
+        break;
+      case "mode":
+        await modeRouter.route(processMessage(message, "optimism"));
+        console.log("Routed message to modeRouter.");
+        break;
+    }
+
+    await optimismRouter.pop();
+    console.log("Popped message on optimismRouter.");
   }
 
-  switch (toChain) {
-    case "zora":
-      await zoraRouter.route(processMessage(message, "optimism"));
-      console.log("Routed message to zoraRouter.");
-      break;
-    case "mode":
-      await modeRouter.route(processMessage(message, "optimism"));
-      console.log("Routed message to modeRouter.");
-      break;
-  }
+  console.log(
+    optimismQueueLength === 0
+      ? "No messages to process on optimismRouter."
+      : "Processed messages on optimismRouter."
+  );
 
-  await optimismRouter.pop();
-  console.log("Popped message on optimismRouter.");
+  console.log("Processing messages on zoraRouter...");
+  const zoraQueueLength = getNumber(await zoraRouter.queueLength());
+  for (let i = zoraQueueLength - 1; i >= 0; i--) {
+    let message = await zoraRouter.messageQueue(i);
+    console.log(`Processing message: ${message}`);
+
+    await optimismRouter.route(processMessage(message, "zora"));
+    console.log("Routed message to optimismRouter.");
+    await zoraRouter.pop();
+    console.log("Popped message on zoraRouter.");
+  }
+  console.log(
+    zoraQueueLength === 0
+      ? "No messages to process on zoraRouter."
+      : "Processed messages on zoraRouter."
+  );
+
+  console.log("Processing messages on modeRouter...");
+  const modeQueueLength = getNumber(await modeRouter.queueLength());
+  for (let i = modeQueueLength - 1; i >= 0; i--) {
+    let message = await modeRouter.messageQueue(i);
+    console.log(`Processing message: ${message}`);
+
+    await optimismRouter.route(processMessage(message, "mode"));
+    console.log("Routed message to optimismRouter.");
+    await modeRouter.pop();
+    console.log("Popped message on modeRouter.");
+  }
+  console.log(
+    modeQueueLength === 0
+      ? "No messages to process on modeRouter."
+      : "Processed messages on modeRouter."
+  );
 }
 
-console.log(
-  optimismQueueLength === 0
-    ? "No messages to process on optimismRouter."
-    : "Processed messages on optimismRouter."
-);
+async function listen() {
+  // Listen for new events
+  optimismRouter.on("MessageSent", async (message) => {
+    console.log(`Received message from optimismRouter: ${message}`);
 
-console.log("Processing messages on zoraRouter...");
-const zoraQueueLength = getNumber(await zoraRouter.queueLength());
-for (let i = zoraQueueLength - 1; i >= 0; i--) {
-  let message = await zoraRouter.messageQueue(i);
-  console.log(`Processing message: ${message}`);
+    let toChain: "zora" | "mode";
+    if (message[0] === 9999n) {
+      toChain = "zora";
+    } else if (message[0] === 9998n) {
+      toChain = "mode";
+    } else {
+      console.log("Message not for Zora or Mode, skipping...");
+      return;
+    }
 
-  await optimismRouter.route(processMessage(message, "zora"));
-  console.log("Routed message to optimismRouter.");
-  await zoraRouter.pop();
-  console.log("Popped message on zoraRouter.");
+    switch (toChain) {
+      case "zora":
+        await zoraRouter.route(processMessage(message, "optimism"));
+        console.log("Routed message to zoraRouter.");
+        break;
+      case "mode":
+        await modeRouter.route(processMessage(message, "optimism"));
+        console.log("Routed message to modeRouter.");
+        break;
+    }
+
+    await optimismRouter.pop();
+    console.log(`Popped message on optimismRouter.`);
+  });
+
+  zoraRouter.on("MessageSent", async (message) => {
+    console.log(`Received message from zoraRouter: ${message}`);
+
+    await optimismRouter.route(processMessage(message, "zora"));
+    console.log("Routed message to optimismRouter");
+    await zoraRouter.pop();
+    console.log("Popped message on zoraRouter.");
+  });
+
+  modeRouter.on("MessageSent", async (message) => {
+    console.log(`Received message from modeRouter: ${message}`);
+
+    await optimismRouter.route(processMessage(message, "mode"));
+    console.log("Routed message to optimismRouter");
+    await modeRouter.pop();
+    console.log("Popped message on modeRouter.");
+  });
+
+  console.log("\nListening for new messages...");
 }
-console.log(
-  zoraQueueLength === 0
-    ? "No messages to process on zoraRouter."
-    : "Processed messages on zoraRouter."
-);
 
-console.log("Processing messages on modeRouter...");
-const modeQueueLength = getNumber(await modeRouter.queueLength());
-for (let i = modeQueueLength - 1; i >= 0; i--) {
-  let message = await modeRouter.messageQueue(i);
-  console.log(`Processing message: ${message}`);
-
-  await optimismRouter.route(processMessage(message, "mode"));
-  console.log("Routed message to optimismRouter.");
-  await modeRouter.pop();
-  console.log("Popped message on modeRouter.");
+function removeAllListeners() {
+  optimismRouter.removeAllListeners();
+  zoraRouter.removeAllListeners();
+  modeRouter.removeAllListeners();
 }
-console.log(
-  modeQueueLength === 0
-    ? "No messages to process on modeRouter."
-    : "Processed messages on modeRouter."
-);
 
-// Listen for new events
-optimismRouter.on("MessageSent", async (message) => {
-  console.log(`Received message from optimismRouter: ${message}`);
+// Rerun the program every 10 minutes to handle
+// dropping connections
+setInterval(async () => {
+  console.log("\nRestarting program...");
+  removeAllListeners();
+  await processMessages();
+  await listen();
+}, 600000);
 
-  let toChain: "zora" | "mode";
-  if (message[0] === 9999n) {
-    toChain = "zora";
-  } else if (message[0] === 9998n) {
-    toChain = "mode";
-  } else {
-    console.log("Message not for Zora or Mode, skipping...");
-    return;
-  }
-
-  switch (toChain) {
-    case "zora":
-      await zoraRouter.route(processMessage(message, "optimism"));
-      console.log("Routed message to zoraRouter.");
-      break;
-    case "mode":
-      await modeRouter.route(processMessage(message, "optimism"));
-      console.log("Routed message to modeRouter.");
-      break;
-  }
-
-  await optimismRouter.pop();
-  console.log(`Popped message on optimismRouter.`);
-});
-
-zoraRouter.on("MessageSent", async (message) => {
-  console.log(`Received message from zoraRouter: ${message}`);
-
-  await optimismRouter.route(processMessage(message, "zora"));
-  console.log("Routed message to optimismRouter");
-  await zoraRouter.pop();
-  console.log("Popped message on zoraRouter.");
-});
-
-modeRouter.on("MessageSent", async (message) => {
-  console.log(`Received message from modeRouter: ${message}`);
-
-  await optimismRouter.route(processMessage(message, "mode"));
-  console.log("Routed message to optimismRouter");
-  await modeRouter.pop();
-  console.log("Popped message on modeRouter.");
-});
-
-console.log("\nListening for new messages...");
+await processMessages();
+await listen();
