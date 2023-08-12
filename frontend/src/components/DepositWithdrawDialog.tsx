@@ -11,11 +11,11 @@ export default function DepositWithdrawDialog({
       className={`card flex flex-col gap-4 w-48 bg-base-100 shadow-xl ${className}`}
     >
       <div className="card-body">
-        <Link to="/deposit" className="btn btn-primary flex flex-row">
+        <Link to="/deposit" className="btn btn-primary flex flex-row text-lg">
           Deposit <FaArrowUp />
         </Link>
         <div className="divider" />
-        <Link to="/withdraw" className="btn btn-primary">
+        <Link to="/withdraw" className="btn btn-primary text-lg">
           Withdraw <FaArrowDown />
         </Link>
       </div>

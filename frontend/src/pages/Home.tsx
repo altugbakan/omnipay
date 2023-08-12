@@ -17,7 +17,7 @@ export default function Home() {
           <div className="text-center">
             <h1 className="text-5xl font-bold text-primary">Deposit Once,</h1>
             <h1 className="text-5xl font-bold text-secondary">Pay Anywhere</h1>
-            <p className="py-6">Connect your wallet to get started.</p>
+            <p className="py-6 text-2xl">Connect your wallet to get started.</p>
             <ConnectButton className="btn-primary" />
           </div>
         </div>

@@ -4,7 +4,7 @@ export function ConnectButton({ className }: { className?: string }) {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
-  const cls = "btn" + (className ? " " + className : "");
+  const cls = "btn text-lg" + (className ? " " + className : "");
 
   if (isConnected && address) {
     return (
