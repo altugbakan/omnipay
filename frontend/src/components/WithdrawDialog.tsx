@@ -87,7 +87,7 @@ export default function WithdrawDialog({ className }: { className?: string }) {
           <div className="text-info">Confirm in your wallet...</div>
         )}
         {isWithdrawSuccess && (
-          <div className="text-success">
+          <div className="text-success max-w-xs">
             Withdrawal successful! Your tokens will arrive at your wallet soon.
           </div>
         )}
