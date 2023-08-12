@@ -2,6 +2,7 @@ import { ethers, getNumber } from "ethers";
 import externalRouter from "./abi/ExternalRouter.json" assert { type: "json" };
 import contracts from "./abi/contracts.json" assert { type: "json" };
 import { JsonRpcProvider } from "ethers";
+import { NonceManager } from "ethers";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -44,16 +45,19 @@ const modeProviderUrl = "https://sepolia.mode.network/";
 
 // Initialize clients
 const optimismProvider = new JsonRpcProvider(optimismProviderURl);
-const optimismWallet = new ethers.Wallet(
-  process.env.BOT_PRIVATE_KEY,
-  optimismProvider
+const optimismWallet = new NonceManager(
+  new ethers.Wallet(process.env.BOT_PRIVATE_KEY, optimismProvider)
 );
 
 const zoraProvider = new JsonRpcProvider(zoraProviderUrl);
-const zoraWallet = new ethers.Wallet(process.env.BOT_PRIVATE_KEY, zoraProvider);
+const zoraWallet = new NonceManager(
+  new ethers.Wallet(process.env.BOT_PRIVATE_KEY, zoraProvider)
+);
 
 const modeProvider = new JsonRpcProvider(modeProviderUrl);
-const modeWallet = new ethers.Wallet(process.env.BOT_PRIVATE_KEY, modeProvider);
+const modeWallet = new NonceManager(
+  new ethers.Wallet(process.env.BOT_PRIVATE_KEY, modeProvider)
+);
 
 const optimismRouterAddress = contracts.OptimismExternalRouter;
 const zoraRouterAddress = contracts.ZoraExternalRouter;
