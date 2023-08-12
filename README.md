@@ -20,7 +20,7 @@ OmniPay is built on top of [LayerZero](https://layerzero.network/), a cross-chai
 
 ## 📱 Demo
 
-To check out OmniPay, visit [omnipay.surge.sh](https://omnipay.surge.sh/). You can test transferring balances between four different chains: [Optimism](https://optimism.io/), [Base](https://base.org), [Zora](https://zora.co/), and [Mode](https://www.mode.network/).
+To check out OmniPay, visit [omnipay.surge.sh](https://omnipay.surge.sh/). You can test transferring balances between four different chains: [Optimism](https://optimism.io/), [Base](https://base.org), [Zora](https://zora.co/), and [Mode](https://mode.network/).
 
 ## 🛠 Built With
 

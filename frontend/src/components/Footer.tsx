@@ -25,7 +25,7 @@ export default function Footer() {
           <img src="/zora.svg" alt="Zora" className="w-6 h-6" />
         </a>
         <a
-          href="https://www.mode.network/"
+          href="https://mode.network/"
           className="hover:scale-110"
           target="_blank"
         >
