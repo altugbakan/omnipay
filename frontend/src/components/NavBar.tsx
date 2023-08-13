@@ -13,7 +13,7 @@ export default function NavBar() {
             alt="OmniPay"
             className="w-8 h-8 rounded-full"
           />
-          <h2 className="text-2xl text-primary">OmniPay</h2>
+          <h2 className="text-3xl text-secondary">OmniPay</h2>
         </NavLink>
       </div>
       <div className="navbar-center flex gap-2">
