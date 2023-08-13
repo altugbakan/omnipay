@@ -39,7 +39,7 @@ function processMessage(
 }
 
 // Set up providers
-const optimismProviderUrl = "https://rpc.ankr.com/optimism_testnet";
+const optimismProviderUrl = "https://opt-goerli.g.alchemy.com/v2/demo";
 const zoraProviderUrl = "https://testnet.rpc.zora.co";
 const modeProviderUrl = "https://sepolia.mode.network";
 
@@ -203,7 +203,7 @@ async function listen() {
     console.log("Popped message on modeRouter.");
   });
 
-  console.log("\nListening for new messages...");
+  console.log("Listening for new messages...");
 }
 
 function removeAllListeners() {
@@ -216,8 +216,8 @@ async function main() {
   removeAllListeners();
 
   try {
-    await processMessages();
     await listen();
+    await processMessages();
   } catch (e) {
     console.log(`Got error: ${e}`);
     // Set timeout to run after event loop
