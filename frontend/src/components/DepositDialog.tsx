@@ -120,11 +120,13 @@ export default function DepositDialog({ className }: { className?: string }) {
             </button>
           )}
         </div>
-        {isDepositLoading && (
+        {(isDepositLoading || isApproveLoading) && (
           <div className="text-info">Confirm in your wallet...</div>
         )}
         {isDepositSuccess && (
-          <div className="text-success">Deposit successful!</div>
+          <div className="text-success max-w-xs">
+            Deposit successful! Your balance will be updated soon.
+          </div>
         )}
       </div>
     </div>
