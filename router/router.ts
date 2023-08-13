@@ -39,12 +39,12 @@ function processMessage(
 }
 
 // Set up providers
-const optimismProviderURl = "https://optimism-goerli.publicnode.com";
+const optimismProviderUrl = "https://rpc.ankr.com/optimism_testnet";
 const zoraProviderUrl = "https://testnet.rpc.zora.co";
-const modeProviderUrl = "https://sepolia.mode.network/";
+const modeProviderUrl = "https://sepolia.mode.network";
 
 // Initialize clients
-const optimismProvider = new JsonRpcProvider(optimismProviderURl);
+const optimismProvider = new JsonRpcProvider(optimismProviderUrl);
 const optimismWallet = new NonceManager(
   new ethers.Wallet(process.env.BOT_PRIVATE_KEY, optimismProvider)
 );
@@ -212,14 +212,26 @@ function removeAllListeners() {
   modeRouter.removeAllListeners();
 }
 
-// Rerun the program every 10 minutes to handle
+async function main() {
+  removeAllListeners();
+
+  try {
+    await processMessages();
+    await listen();
+  } catch (e) {
+    console.log(`Got error: ${e}`);
+    // Set timeout to run after event loop
+    setTimeout(async () => {
+      await main();
+    }, 0);
+  }
+}
+
+// Rerun the program every 5 minutes to handle
 // dropping connections
 setInterval(async () => {
   console.log("\nRestarting program...");
-  removeAllListeners();
-  await processMessages();
-  await listen();
-}, 600000);
+  await main();
+}, 300000);
 
-await processMessages();
-await listen();
+await main();
