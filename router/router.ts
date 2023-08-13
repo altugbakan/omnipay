@@ -206,16 +206,15 @@ async function listen() {
   console.log("Listening for new messages...");
 }
 
-function removeAllListeners() {
-  optimismRouter.removeAllListeners();
-  zoraRouter.removeAllListeners();
-  modeRouter.removeAllListeners();
+async function removeAllListeners() {
+  await optimismRouter.removeAllListeners();
+  await zoraRouter.removeAllListeners();
+  await modeRouter.removeAllListeners();
 }
 
 async function main() {
-  removeAllListeners();
-
   try {
+    await removeAllListeners();
     await listen();
     await processMessages();
   } catch (e) {
